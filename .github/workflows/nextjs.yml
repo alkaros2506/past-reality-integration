@@ -36,7 +36,7 @@ jobs:
         run: |
           echo "manager=npm" >> $GITHUB_OUTPUT
           echo "command=ci" >> $GITHUB_OUTPUT
-          echo "runner=npx --no-install" >> $GITHUB_/PUT
+          echo "runner=npx --no-install" >> $GITHUB_OUTPUT
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
