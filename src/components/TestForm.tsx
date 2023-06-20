@@ -1,6 +1,6 @@
 "use client"; // This is a client component 👈🏽
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Typography,
   TextField,
@@ -12,24 +12,89 @@ import {
   DialogContentText,
   DialogActions,
   Slider,
+  styled,
+  InputAdornment,
 } from "@mui/material";
 
-const TestForm = () => {
-  const [scores, setScores] = useState<string[]>(
-    [
-      1, 2, 9, 7, 6, 9, 8, 4, 7, 3, 2, 3, 7, 2, 2, 8, 8, 7, 3, 7, 7, 3, 8, 6, 5,
-      2, 2, 2, 9, 3, 8, 9, 7, 10, 8, 10, 9, 5, 4, 7, 7, 4, 7, 3, 4, 9, 7, 4, 3,
-      3,
-    ].map((score) => score.toString())
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Paper from "@mui/material/Paper";
+
+const Input = styled(TextField)(({ theme }) => ({
+  "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+    display: "none",
+    padding: 0,
+    border: "none",
+  },
+  "& input[type=number]": {
+    MozAppearance: "textfield",
+    padding: "4px 0",
+    textAlign: "right",
+    border: "#fefefe solid thin",
+  },
+}));
+
+const scoresFromParams = (params: URLSearchParams | undefined) => {
+  if (!params) {
+    return new Array(50).fill(0);
+  }
+
+  const encryptedScores = params.get("scx");
+  if (!encryptedScores) {
+    return new Array(50).fill(0);
+  }
+  return Buffer.from(encryptedScores, "base64").toString("utf-8").split(",");
+};
+
+const scoresToParams = (scores: string[]) => {
+  const encryptedScores = Buffer.from(scores.join(","), "utf-8").toString(
+    "base64"
   );
+  // Add them to the URL
+  if (typeof window !== "undefined") {
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}?scx=${encryptedScores}`
+    );
+  }
+
+  return new URLSearchParams({ scx: encryptedScores });
+};
+
+const getQueryParams = () => {
+  if (typeof window === "undefined") {
+    return new URLSearchParams();
+  }
+  return new URLSearchParams(window.location.search);
+};
+
+const TestForm = () => {
+  const [searchParams, setSearchParams] = useState<
+    URLSearchParams | undefined
+  >();
+  const [scores, setScores] = useState<string[]>(new Array(50).fill("0"));
   const [defenseGuesses, setDefenseGuesses] = useState(["", "", "", "", ""]);
   const [defenseProfileScore, setDefenseProfileScore] = useState<JSX.Element>();
   const [openModal, setOpenModal] = useState(false);
+
+  useEffect(() => {
+    setSearchParams(getQueryParams());
+  }, []);
+
+  useEffect(() => {
+    setScores(scoresFromParams(searchParams));
+  }, [searchParams]);
 
   const handleScoreChange = (index, value) => {
     const newScores = [...scores];
     newScores[index] = value;
     setScores(newScores);
+    setSearchParams(scoresToParams(newScores));
   };
 
   const handleDefenseGuessChange = (index, value) => {
@@ -116,7 +181,7 @@ const TestForm = () => {
   };
 
   const renderStatements = () => {
-    const statements = [
+    return [
       "I often find myself trying to accomplish things that somehow don’t seem to succeed.",
       "My friends describe me as a nervous type of person, afraid of making friends.",
       "In the beginning stage of the projects I think up, I usually get a lot of energy. It can feel as if my life has a purpose again.",
@@ -168,32 +233,87 @@ const TestForm = () => {
       "My breathing easily gets out of control.",
       "I often experience diarrhea.",
     ];
-
-    return statements.map((statement, index) => (
-      <Grid item xs={12} key={index}>
-        <Typography variant="body1" gutterBottom>
-          {statement}
-        </Typography>
-        <Slider
-          value={parseInt(scores[index] || "0")}
-          onChange={(e, value) => handleScoreChange(index, value)}
-          min={1}
-          max={10}
-          size="small"
-          step={1}
-          marks
-          valueLabelDisplay="auto"
-        />
-      </Grid>
-    ));
   };
 
   return (
     <>
       <form onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
+        <TableContainer component={Paper}>
+          <Table sx={{ minWidth: 650 }} aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Statement</TableCell>
+                <TableCell align="right">Score</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {renderStatements().map((row, i) => (
+                <TableRow
+                  key={`row-${i}`}
+                  sx={{
+                    "&:last-child td, &:last-child th": {
+                      border: 0,
+                      marginTop: 0,
+                      marginBottom: 0,
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                    },
+                  }}
+                >
+                  <TableCell
+                    component="th"
+                    scope="row"
+                    sx={{
+                      marginTop: 0,
+                      marginBottom: 0,
+                      paddingTop: 1,
+                      paddingBottom: 1,
+                    }}
+                  >
+                    <Typography variant="body1">{row}</Typography>
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                      marginTop: 0,
+                      marginBottom: 0,
+                    }}
+                  >
+                    <Input
+                      variant="standard"
+                      type="number"
+                      InputProps={{
+                        inputMode: 'numeric', 
+                        endAdornment: (
+                          <InputAdornment position="end">/ 10</InputAdornment>
+                        ),
+                        inputProps: { min: 0, max: 10 },
+                        style: {
+                          textAlign: "right",
+                          padding: 0,
+                          margin: 0,
+                        },
+                      }}
+                      value={scores[i]}
+                      onChange={(e) => handleScoreChange(i, e.target.value)}
+                      sx={{
+                        width: "80px",
+                        margin: 0,
+                        padding: 0,
+                      }}
+                      size="small"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {/* <Grid container spacing={2}>
           {renderStatements()}
-        </Grid>
+        </Grid> */}
         <Grid container spacing={2} marginTop={4}>
           {renderDefenseGuesses()}
         </Grid>
